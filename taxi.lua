@@ -1,4 +1,4 @@
--- Roblox Taxi Script - Synchronized Polling Version (Race Condition Patched)
+-- Roblox Taxi Script - Synchronized Polling Version (Race Condition Patched + Return to Spawn)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -341,6 +341,32 @@ local function teleportToAnchor()
     log("Teleporting to destination...")
     driftTo(dropoffPos)
     log("Arrived at dropoff destination!")
+
+    -- === PHASE 3: RETURN TO SPAWN (NEW) ===
+    log("Waiting for completion payout...")
+    task.wait(2) -- Wait for the server to process the dropoff completely
+
+    if isEnabled then
+        log("Returning to spawn...")
+        local spawnPos = Vector3.new(-959.122925, 249.684097, -5163.03027)
+        driftTo(spawnPos)
+
+        -- Snap to exact provided CFrame rotation after drifting
+        local finalCFrame = CFrame.new(-959.122925, 249.684097, -5163.03027, 0.996191859, 0, 0.0871884301, 0, 1, 0, -0.0871884301, 0, 0.996191859)
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            local seat = humanoid and humanoid.SeatPart
+            local vehicle = seat and seat:FindFirstAncestorOfClass("Model")
+            
+            if vehicle and vehicle.PrimaryPart then
+                vehicle:SetPrimaryPartCFrame(finalCFrame)
+            elseif character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = finalCFrame
+            end
+        end
+        log("Ready at spawn!")
+    end
 
     -- State Reset Configuration
     isTeleporting = false
