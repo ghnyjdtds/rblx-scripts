@@ -1,0 +1,102 @@
+--[[ 
+    VEHICLE UTILITY: ALL-IN-ONE
+    - Target: workspace.Vehicles["1700_o9's Vehicle_1"].Fuel
+    - Trigger: Auto-Refuel < 5
+    - Features: Draggable GUI, Orbit Toggle
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local vehicleName = "1700_o9's Vehicle_1"
+local fuelThreshold = 5
+local isRefueling = false
+
+-- Orbit State
+local orbitActive = false
+local angle = 0
+local bp, bg, orbitConnection
+
+-- 1. REMOTE SETUP
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("FuelSystem"):WaitForChild("RefuelVehicle")
+
+local function performRefuel()
+    if isRefueling then return end
+    isRefueling = true
+    local args = { 78, 62.96, "93", "Based_C_Series_300t_Cappuccino" }
+    remote:FireServer(unpack(args))
+    task.wait(2)
+    isRefueling = false
+end
+
+-- 2. MONITOR FUEL (as seen in image_fc6715.png)
+local function monitor()
+    local vehiclesFolder = Workspace:FindFirstChild("Vehicles")
+    if not vehiclesFolder then return end
+    local vehicle = vehiclesFolder:FindFirstChild(vehicleName)
+    if vehicle then
+        local fuelValue = vehicle:FindFirstChild("Fuel") --
+        if fuelValue and fuelValue:IsA("NumberValue") then
+            fuelValue.Changed:Connect(function(val)
+                if val < fuelThreshold then performRefuel() end
+            end)
+            if fuelValue.Value < fuelThreshold then performRefuel() end
+        end
+    end
+end
+
+-- 3. GUI CREATION
+local ScreenGui = Instance.new("ScreenGui", (gethui and gethui()) or player:WaitForChild("PlayerGui"))
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 150, 0, 100)
+MainFrame.Position = UDim2.new(0.5, -75, 0.5, -50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame)
+
+local ToggleBtn = Instance.new("TextButton", MainFrame)
+ToggleBtn.Size = UDim2.new(0.8, 0, 0.5, 0)
+ToggleBtn.Position = UDim2.new(0.1, 0, 0.25, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+ToggleBtn.Text = "ORBIT: OFF"
+ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", ToggleBtn)
+
+-- 4. ORBIT LOGIC
+local function stopOrbit()
+    orbitActive = false
+    ToggleBtn.Text = "ORBIT: OFF"
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    if bp then bp:Destroy() end
+    if bg then bg:Destroy() end
+    if orbitConnection then orbitConnection:Disconnect() end
+end
+
+local function startOrbit()
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    orbitActive = true
+    ToggleBtn.Text = "ORBIT: ON"
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
+    bp = Instance.new("BodyPosition", root)
+    bp.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bg = Instance.new("BodyGyro", root)
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    local center = root.Position + Vector3.new(0, 60, 0)
+    orbitConnection = RunService.Heartbeat:Connect(function(dt)
+        angle = angle + dt
+        bp.Position = center + Vector3.new(math.cos(angle) * 70, 0, math.sin(angle) * 70)
+        bg.CFrame = CFrame.new(root.Position, center)
+    end)
+end
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    if orbitActive then stopOrbit() else startOrbit() end
+end)
+
+-- INITIALIZE
+monitor()
