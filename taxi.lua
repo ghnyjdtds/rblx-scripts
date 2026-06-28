@@ -1,4 +1,4 @@
--- Roblox Taxi Script - Synchronized Polling Version (Race Condition Patched + Return to Spawn)
+-- Roblox Taxi Script - Synchronized Polling Version (Race Condition Patched + Return to Spawn + 1s Timer)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -344,14 +344,13 @@ local function teleportToAnchor()
 
     -- === PHASE 3: RETURN TO SPAWN (NEW) ===
     log("Waiting for completion payout...")
-    task.wait(2) -- Wait for the server to process the dropoff completely
+    task.wait(1) -- Wait 1s instead of 2s
 
     if isEnabled then
         log("Returning to spawn...")
         local spawnPos = Vector3.new(-959.122925, 249.684097, -5163.03027)
         driftTo(spawnPos)
 
-        -- Snap to exact provided CFrame rotation after drifting
         local finalCFrame = CFrame.new(-959.122925, 249.684097, -5163.03027, 0.996191859, 0, 0.0871884301, 0, 1, 0, -0.0871884301, 0, 0.996191859)
         local character = LocalPlayer.Character
         if character then
@@ -421,10 +420,8 @@ local function enableScript()
     log("Awaiting engine signals...")
 
     updateConnection = TaxiUpdate.OnClientEvent:Connect(function()
-        -- Handled explicitly in offerConnection now to prevent double-firing
     end)
 
-    -- Intercept offer, click, sync delay, and launch sequence
     offerConnection = TaxiOffer.OnClientEvent:Connect(function(name, fare)
         if not isEnabled or isTeleporting then return end
         log("Intercepted offer from client: " .. tostring(name))
@@ -441,8 +438,6 @@ local function enableScript()
             if success then
                 log("Button clicked! Waiting for server sync...")
                 
-                -- THE FIX: Wait 1.5 seconds so the game deletes the old drop-off 
-                -- marker and officially registers the new pickup marker.
                 task.wait(1.5) 
                 
                 teleportToAnchor()
