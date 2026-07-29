@@ -1,4 +1,4 @@
--- Roblox Aimbot, Triggerbot, ESP & Player Modifiers Script with Tabbed GUI, Noclip, Fly Speed, FOV Color Picker & KnifeDuel Bot Branding (KnifeDuel Bot)
+-- Roblox Aimbot, Triggerbot, ESP, ESP Hitboxes, Teleport & Player Modifiers Script (KnifeDuel Bot)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -11,8 +11,10 @@ local Camera = workspace.CurrentCamera
 local AimbotEnabled = false
 local TriggerbotEnabled = false
 local TriggerbotMode = "Left" -- "Left" or "Right"
+local TeleportBehindEnabled = false
 local ToggleKey = Enum.KeyCode.E
 local HideGuiKey = Enum.KeyCode.RightShift
+local TeleportKey = Enum.KeyCode.G
 
 -- Player Modifiers Configuration
 local WalkSpeedEnabled = false
@@ -40,6 +42,7 @@ local EspTracersEnabled = false
 local EspNamesEnabled = false
 local EspHealthEnabled = false
 local EspDistanceEnabled = false
+local EspHitboxesEnabled = false
 local RainbowBoxesEnabled = false
 local BoxColor = Color3.fromRGB(255, 255, 255)
 
@@ -298,10 +301,26 @@ local FovPreviewCorner = Instance.new("UICorner")
 FovPreviewCorner.CornerRadius = UDim.new(0, 6)
 FovPreviewCorner.Parent = FovColorPreview
 
+-- Teleport Behind Button
+local TeleportBehindButton = Instance.new("TextButton")
+TeleportBehindButton.Name = "TeleportBehindButton"
+TeleportBehindButton.Size = UDim2.new(0, 180, 0, 26)
+TeleportBehindButton.Position = UDim2.new(0.5, -90, 0, 288)
+TeleportBehindButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TeleportBehindButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+TeleportBehindButton.TextSize = 12
+TeleportBehindButton.Font = Enum.Font.SourceSansBold
+TeleportBehindButton.Text = "Teleport Behind (G): OFF"
+TeleportBehindButton.Parent = AimbotPanel
+
+local TpCorner = Instance.new("UICorner")
+TpCorner.CornerRadius = UDim.new(0, 6)
+TpCorner.Parent = TeleportBehindButton
+
 local TargetLabel = Instance.new("TextLabel")
 TargetLabel.Name = "TargetLabel"
 TargetLabel.Size = UDim2.new(0, 180, 0, 26)
-TargetLabel.Position = UDim2.new(0.5, -90, 0, 288)
+TargetLabel.Position = UDim2.new(0.5, -90, 0, 318)
 TargetLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 TargetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 TargetLabel.TextSize = 12
@@ -316,7 +335,7 @@ TargetCorner.Parent = TargetLabel
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
 CloseButton.Size = UDim2.new(0, 180, 0, 28)
-CloseButton.Position = UDim2.new(0.5, -90, 0, 318)
+CloseButton.Position = UDim2.new(0.5, -90, 0, 348)
 CloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseButton.TextSize = 13
@@ -361,13 +380,14 @@ local TracerButton = createEspButton("Tracers", 64)
 local NameButton = createEspButton("Name", 96)
 local HealthButton = createEspButton("Health", 128)
 local DistanceButton = createEspButton("Distance", 160)
+local HitboxButton = createEspButton("ESP Hitboxes", 192)
 
 local RgbFrame = Instance.new("TextButton")
 RgbFrame.Name = "RgbFrame"
 RgbFrame.AutoButtonColor = false
 RgbFrame.Text = ""
-RgbFrame.Size = UDim2.new(0, 180, 0, 120)
-RgbFrame.Position = UDim2.new(0.5, -90, 0, 194)
+RgbFrame.Size = UDim2.new(0, 180, 0, 110)
+RgbFrame.Position = UDim2.new(0.5, -90, 0, 226)
 RgbFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 RgbFrame.BorderSizePixel = 0
 RgbFrame.Parent = EspPanel
@@ -377,11 +397,11 @@ RgbCorner.CornerRadius = UDim.new(0, 6)
 RgbCorner.Parent = RgbFrame
 
 local RgbLabel = Instance.new("TextLabel")
-RgbLabel.Size = UDim2.new(1, 0, 0, 20)
+RgbLabel.Size = UDim2.new(1, 0, 0, 18)
 RgbLabel.BackgroundTransparency = 1
 RgbLabel.Text = "Box Color Picker (RGB)"
 RgbLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-RgbLabel.TextSize = 12
+RgbLabel.TextSize = 11
 RgbLabel.Font = Enum.Font.SourceSansBold
 RgbLabel.Parent = RgbFrame
 
@@ -389,8 +409,8 @@ local ColorWheel = Instance.new("TextButton")
 ColorWheel.Name = "ColorWheel"
 ColorWheel.AutoButtonColor = false
 ColorWheel.Text = ""
-ColorWheel.Size = UDim2.new(0, 90, 0, 90)
-ColorWheel.Position = UDim2.new(0, 10, 0, 24)
+ColorWheel.Size = UDim2.new(0, 85, 0, 80)
+ColorWheel.Position = UDim2.new(0, 10, 0, 22)
 ColorWheel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 ColorWheel.BorderSizePixel = 0
 ColorWheel.Parent = RgbFrame
@@ -412,8 +432,8 @@ UIGradient.Color = ColorSequence.new({
 UIGradient.Parent = ColorWheel
 
 local ColorPreview = Instance.new("Frame")
-ColorPreview.Size = UDim2.new(0, 60, 0, 90)
-ColorPreview.Position = UDim2.new(0, 110, 0, 24)
+ColorPreview.Size = UDim2.new(0, 60, 0, 80)
+ColorPreview.Position = UDim2.new(0, 105, 0, 22)
 ColorPreview.BackgroundColor3 = BoxColor
 ColorPreview.BorderSizePixel = 0
 ColorPreview.Parent = RgbFrame
@@ -616,6 +636,40 @@ table.insert(connections, UserInputService.InputBegan:Connect(function(input, ga
     end
 end))
 
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local mouseLocation = UserInputService:GetMouseLocation()
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local targetPart = player.Character:FindFirstChild("Head") 
+                    or player.Character:FindFirstChild("UpperTorso") 
+                    or player.Character:FindFirstChild("HumanoidRootPart")
+                    or player.Character:FindFirstChild("Torso")
+                    
+                if targetPart then
+                    local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    
+                    if onScreen and screenPoint.Z > 0 then
+                        local screenPos2D = Vector2.new(screenPoint.X, screenPoint.Y)
+                        local distance = (screenPos2D - mouseLocation).Magnitude
+
+                        if distance <= FovRadius and distance < shortestDistance then
+                            shortestDistance = distance
+                            closestPlayer = player
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
 local function updateAimbotState()
     AimbotEnabled = not AimbotEnabled
     if AimbotEnabled then
@@ -628,13 +682,57 @@ local function updateAimbotState()
     end
 end
 
-table.insert(connections, ToggleButton.MouseButton1Click:Connect(updateAimbotState))
+local function updateTeleportState()
+    TeleportBehindEnabled = not TeleportBehindEnabled
+    if TeleportBehindEnabled then
+        TeleportBehindButton.Text = "Teleport Behind (G): ON"
+        TeleportBehindButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        TeleportBehindButton.Text = "Teleport Behind (G): OFF"
+        TeleportBehindButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end
 
+-- Keybinds for Aimbot (E) and Teleport / Face (G)
 table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == ToggleKey then
-        updateAimbotState()
+    if not gameProcessed then
+        if input.KeyCode == ToggleKey then
+            updateAimbotState()
+        elseif input.KeyCode == TeleportKey then
+            if AimbotEnabled then
+                -- Turn ON / Turn Green automatically on press
+                TeleportBehindEnabled = true
+                TeleportBehindButton.Text = "Teleport Behind (G): ON"
+                TeleportBehindButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+
+                local target = getClosestPlayer()
+                if target and target.Character then
+                    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+                    if targetRoot and myRoot then
+                        -- 1. TELEPORT 4 studs behind the target facing towards them
+                        local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * 4)
+                        myRoot.CFrame = CFrame.new(behindPos, targetRoot.Position)
+                        
+                        -- 2. FORCE CAMERA to face the player even in first person
+                        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetRoot.Position)
+                    end
+                end
+
+                -- Instantly turn OFF / turn Red so it's ready for the next press
+                task.delay(0.05, function()
+                    TeleportBehindEnabled = false
+                    TeleportBehindButton.Text = "Teleport Behind (G): OFF"
+                    TeleportBehindButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end)
+            end
+        end
     end
 end))
+
+table.insert(connections, ToggleButton.MouseButton1Click:Connect(updateAimbotState))
+table.insert(connections, TeleportBehindButton.MouseButton1Click:Connect(updateTeleportState))
 
 table.insert(connections, TriggerbotToggleButton.MouseButton1Click:Connect(function()
     TriggerbotEnabled = not TriggerbotEnabled
@@ -855,11 +953,18 @@ setupToggle(TracerButton, function() return EspTracersEnabled end, function(v) E
 setupToggle(NameButton, function() return EspNamesEnabled end, function(v) EspNamesEnabled = v end, "Name")
 setupToggle(HealthButton, function() return EspHealthEnabled end, function(v) EspHealthEnabled = v end, "Health")
 setupToggle(DistanceButton, function() return EspDistanceEnabled end, function(v) EspDistanceEnabled = v end, "Distance")
+setupToggle(HitboxButton, function() return EspHitboxesEnabled end, function(v) EspHitboxesEnabled = v end, "ESP Hitboxes")
 
 local function removeEspForPlayer(player)
     if espDrawings[player] then
         for _, drawing in pairs(espDrawings[player]) do
-            if drawing and drawing.Remove then
+            if type(drawing) == "table" then
+                for _, subDrawing in pairs(drawing) do
+                    if subDrawing and subDrawing.Remove then
+                        subDrawing:Remove()
+                    end
+                end
+            elseif drawing and drawing.Remove then
                 drawing:Remove()
             end
         end
@@ -882,40 +987,6 @@ table.insert(connections, CloseButton.MouseButton1Click:Connect(function()
     end
     ScreenGui:Destroy()
 end))
-
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local mouseLocation = UserInputService:GetMouseLocation()
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                local targetPart = player.Character:FindFirstChild("Head") 
-                    or player.Character:FindFirstChild("UpperTorso") 
-                    or player.Character:FindFirstChild("HumanoidRootPart")
-                    or player.Character:FindFirstChild("Torso")
-                    
-                if targetPart then
-                    local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                    
-                    if onScreen and screenPoint.Z > 0 then
-                        local screenPos2D = Vector2.new(screenPoint.X, screenPoint.Y)
-                        local distance = (screenPos2D - mouseLocation).Magnitude
-
-                        if distance <= FovRadius and distance < shortestDistance then
-                            shortestDistance = distance
-                            closestPlayer = player
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    return closestPlayer
-end
 
 local function isMouseOverTarget()
     local mouse = LocalPlayer:GetMouse()
@@ -1051,7 +1122,8 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
                         Box = Drawing.new("Square"),
                         Tracer = Drawing.new("Line"),
                         NameTag = Drawing.new("Text"),
-                        InfoTag = Drawing.new("Text")
+                        InfoTag = Drawing.new("Text"),
+                        Hitboxes = {}
                     }
                     espDrawings[player].Box.Visible = false
                     espDrawings[player].Box.Thickness = 1.5
@@ -1075,6 +1147,43 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
                 end
 
                 local visuals = espDrawings[player]
+                
+                if EspHitboxesEnabled then
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") and part.Transparency < 1 then
+                            local hbKey = part
+                            local highlightBox = visuals.Hitboxes[hbKey]
+                            if not highlightBox then
+                                highlightBox = Drawing.new("Square")
+                                highlightBox.Thickness = 1
+                                highlightBox.Filled = true
+                                highlightBox.Transparency = 0.85
+                                visuals.Hitboxes[hbKey] = highlightBox
+                            end
+                            
+                            local cf, size = part.CFrame, part.Size
+                            local screenPos, onScreen = Camera:WorldToViewportPoint(cf.Position)
+                            if onScreen and screenPos.Z > 0 then
+                                local topPoint = Camera:WorldToViewportPoint((cf * CFrame.new(0, size.Y / 2, 0)).Position)
+                                local bottomPoint = Camera:WorldToViewportPoint((cf * CFrame.new(0, -size.Y / 2, 0)).Position)
+                                local height = math.abs(topPoint.Y - bottomPoint.Y)
+                                local width = height * (size.X / size.Y)
+                                
+                                highlightBox.Size = Vector2.new(math.max(width, 4), math.max(height, 4))
+                                highlightBox.Position = Vector2.new(screenPos.X - highlightBox.Size.X / 2, screenPos.Y - highlightBox.Size.Y / 2)
+                                highlightBox.Color = currentBoxColor
+                                highlightBox.Visible = true
+                            else
+                                highlightBox.Visible = false
+                            end
+                        end
+                    end
+                else
+                    for _, hb in pairs(visuals.Hitboxes) do
+                        hb.Visible = false
+                    end
+                end
+
                 local cf, size = character:GetBoundingBox()
                 local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
 
@@ -1084,13 +1193,15 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
                     local boxHeight = math.abs(topPoint.Y - bottomPoint.Y)
                     local boxWidth = boxHeight / 2
 
-                    if EspBoxesEnabled then
-                        visuals.Box.Size = Vector2.new(boxWidth, boxHeight)
-                        visuals.Box.Position = Vector2.new(screenPosition.X - boxWidth / 2, topPoint.Y)
-                        visuals.Box.Color = currentBoxColor
-                        visuals.Box.Visible = true
-                    else
-                        visuals.Box.Visible = false
+                    if BoxButton then
+                        if EspBoxesEnabled then
+                            visuals.Box.Size = Vector2.new(boxWidth, boxHeight)
+                            visuals.Box.Position = Vector2.new(screenPosition.X - boxWidth / 2, topPoint.Y)
+                            visuals.Box.Color = currentBoxColor
+                            visuals.Box.Visible = true
+                        else
+                            visuals.Box.Visible = false
+                        end
                     end
 
                     if EspTracersEnabled then
