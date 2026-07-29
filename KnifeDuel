@@ -1,0 +1,1145 @@
+-- Roblox Aimbot, Triggerbot, ESP & Player Modifiers Script with Tabbed GUI, Noclip, Fly Speed, FOV Color Picker & KnifeDuel Bot Branding (KnifeDuel Bot)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Configuration
+local AimbotEnabled = false
+local TriggerbotEnabled = false
+local TriggerbotMode = "Left" -- "Left" or "Right"
+local ToggleKey = Enum.KeyCode.E
+local HideGuiKey = Enum.KeyCode.RightShift
+
+-- Player Modifiers Configuration
+local WalkSpeedEnabled = false
+local WalkSpeedValue = 16
+local FlyEnabled = false
+local FlySpeed = 50
+local NoclipEnabled = false
+local cachedAnimateScript = nil
+
+-- FOV Configuration
+local FovEnabled = false
+local FovRadius = 150
+local FovColor = Color3.fromRGB(255, 255, 255)
+local FovCircle = Drawing.new("Circle")
+FovCircle.Visible = false
+FovCircle.Thickness = 1.5
+FovCircle.NumSides = 64
+FovCircle.Radius = FovRadius
+FovCircle.Filled = false
+FovCircle.Color = FovColor
+
+-- ESP Configuration & Storage
+local EspBoxesEnabled = false
+local EspTracersEnabled = false
+local EspNamesEnabled = false
+local EspHealthEnabled = false
+local EspDistanceEnabled = false
+local RainbowBoxesEnabled = false
+local BoxColor = Color3.fromRGB(255, 255, 255)
+
+local espDrawings = {}
+
+-- Create GUI: KnifeDuel Bot
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KnifeDuelBot"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "KnifeDuel Bot"
+TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Parent = MainFrame
+
+-- Tab Switcher Container
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(0, 200, 0, 30)
+TabContainer.Position = UDim2.new(0.5, -100, 0, 38)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = MainFrame
+
+local AimbotTabBtn = Instance.new("TextButton")
+AimbotTabBtn.Size = UDim2.new(0.33, -2, 1, 0)
+AimbotTabBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+AimbotTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotTabBtn.TextSize = 12
+AimbotTabBtn.Font = Enum.Font.SourceSansBold
+AimbotTabBtn.Text = "Aimbot"
+AimbotTabBtn.Parent = TabContainer
+
+local AimbotTabCorner = Instance.new("UICorner")
+AimbotTabCorner.CornerRadius = UDim.new(0, 6)
+AimbotTabCorner.Parent = AimbotTabBtn
+
+local EspTabBtn = Instance.new("TextButton")
+EspTabBtn.Size = UDim2.new(0.33, -2, 1, 0)
+EspTabBtn.Position = UDim2.new(0.33, 1, 0, 0)
+EspTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+EspTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+EspTabBtn.TextSize = 12
+EspTabBtn.Font = Enum.Font.SourceSansBold
+EspTabBtn.Text = "ESP"
+EspTabBtn.Parent = TabContainer
+
+local EspTabCorner = Instance.new("UICorner")
+EspTabCorner.CornerRadius = UDim.new(0, 6)
+EspTabCorner.Parent = EspTabBtn
+
+local PlayerTabBtn = Instance.new("TextButton")
+PlayerTabBtn.Size = UDim2.new(0.33, -2, 1, 0)
+PlayerTabBtn.Position = UDim2.new(0.66, 2, 0, 0)
+PlayerTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+PlayerTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+PlayerTabBtn.TextSize = 12
+PlayerTabBtn.Font = Enum.Font.SourceSansBold
+PlayerTabBtn.Text = "Player"
+PlayerTabBtn.Parent = TabContainer
+
+local PlayerTabCorner = Instance.new("UICorner")
+PlayerTabCorner.CornerRadius = UDim.new(0, 6)
+PlayerTabCorner.Parent = PlayerTabBtn
+
+-- Container for Aimbot Options Panel
+local AimbotPanel = Instance.new("Frame")
+AimbotPanel.Size = UDim2.new(1, 0, 0, 395)
+AimbotPanel.Position = UDim2.new(0, 0, 0, 75)
+AimbotPanel.BackgroundTransparency = 1
+AimbotPanel.Visible = true
+AimbotPanel.Parent = MainFrame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 180, 0, 32)
+ToggleButton.Position = UDim2.new(0.5, -90, 0, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleButton.TextSize = 13
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "Aimbot: OFF"
+ToggleButton.Parent = AimbotPanel
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 6)
+ButtonCorner.Parent = ToggleButton
+
+local TriggerbotToggleButton = Instance.new("TextButton")
+TriggerbotToggleButton.Name = "TriggerbotToggleButton"
+TriggerbotToggleButton.Size = UDim2.new(0, 180, 0, 32)
+TriggerbotToggleButton.Position = UDim2.new(0.5, -90, 0, 38)
+TriggerbotToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TriggerbotToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+TriggerbotToggleButton.TextSize = 13
+TriggerbotToggleButton.Font = Enum.Font.SourceSansBold
+TriggerbotToggleButton.Text = "Triggerbot: OFF"
+TriggerbotToggleButton.Parent = AimbotPanel
+
+local TriggerbotButtonCorner = Instance.new("UICorner")
+TriggerbotButtonCorner.CornerRadius = UDim.new(0, 6)
+TriggerbotButtonCorner.Parent = TriggerbotToggleButton
+
+-- Triggerbot Click Mode Selection Button
+local TriggerbotModeButton = Instance.new("TextButton")
+TriggerbotModeButton.Name = "TriggerbotModeButton"
+TriggerbotModeButton.Size = UDim2.new(0, 180, 0, 32)
+TriggerbotModeButton.Position = UDim2.new(0.5, -90, 0, 76)
+TriggerbotModeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TriggerbotModeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+TriggerbotModeButton.TextSize = 13
+TriggerbotModeButton.Font = Enum.Font.SourceSansBold
+TriggerbotModeButton.Text = "Trigger Click: Left"
+TriggerbotModeButton.Parent = AimbotPanel
+
+local TriggerbotModeCorner = Instance.new("UICorner")
+TriggerbotModeCorner.CornerRadius = UDim.new(0, 6)
+TriggerbotModeCorner.Parent = TriggerbotModeButton
+
+local FovToggleButton = Instance.new("TextButton")
+FovToggleButton.Name = "FovToggleButton"
+FovToggleButton.Size = UDim2.new(0, 180, 0, 32)
+FovToggleButton.Position = UDim2.new(0.5, -90, 0, 114)
+FovToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FovToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+FovToggleButton.TextSize = 13
+FovToggleButton.Font = Enum.Font.SourceSansBold
+FovToggleButton.Text = "FOV Circle: OFF"
+FovToggleButton.Parent = AimbotPanel
+
+local FovButtonCorner = Instance.new("UICorner")
+FovButtonCorner.CornerRadius = UDim.new(0, 6)
+FovButtonCorner.Parent = FovToggleButton
+
+-- Slider for FOV Radius
+local SliderFrame = Instance.new("TextButton")
+SliderFrame.Name = "SliderFrame"
+SliderFrame.AutoButtonColor = false
+SliderFrame.Text = ""
+SliderFrame.Size = UDim2.new(0, 180, 0, 42)
+SliderFrame.Position = UDim2.new(0.5, -90, 0, 152)
+SliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+SliderFrame.BorderSizePixel = 0
+SliderFrame.Parent = AimbotPanel
+
+local SliderCorner = Instance.new("UICorner")
+SliderCorner.CornerRadius = UDim.new(0, 6)
+SliderCorner.Parent = SliderFrame
+
+local SliderLabel = Instance.new("TextLabel")
+SliderLabel.Size = UDim2.new(1, 0, 0, 18)
+SliderLabel.BackgroundTransparency = 1
+SliderLabel.Text = "FOV Radius: " .. FovRadius
+SliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+SliderLabel.TextSize = 12
+SliderLabel.Font = Enum.Font.SourceSans
+SliderLabel.Parent = SliderFrame
+
+local SliderBar = Instance.new("Frame")
+SliderBar.Size = UDim2.new(0, 160, 0, 8)
+SliderBar.Position = UDim2.new(0.5, -80, 0, 26)
+SliderBar.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+SliderBar.BorderSizePixel = 0
+SliderBar.Parent = SliderFrame
+
+local SliderBarCorner = Instance.new("UICorner")
+SliderBarCorner.CornerRadius = UDim.new(0, 4)
+SliderBarCorner.Parent = SliderBar
+
+local SliderFill = Instance.new("Frame")
+local initialFill = math.clamp((FovRadius - 50) / (400 - 50), 0, 1)
+SliderFill.Size = UDim2.new(initialFill, 0, 1, 0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+SliderFill.BorderSizePixel = 0
+SliderFill.Parent = SliderBar
+
+local SliderFillCorner = Instance.new("UICorner")
+SliderFillCorner.CornerRadius = UDim.new(0, 4)
+SliderFillCorner.Parent = SliderFill
+
+-- FOV Color Picker Frame
+local FovRgbFrame = Instance.new("TextButton")
+FovRgbFrame.Name = "FovRgbFrame"
+FovRgbFrame.AutoButtonColor = false
+FovRgbFrame.Text = ""
+FovRgbFrame.Size = UDim2.new(0, 180, 0, 85)
+FovRgbFrame.Position = UDim2.new(0.5, -90, 0, 198)
+FovRgbFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+FovRgbFrame.BorderSizePixel = 0
+FovRgbFrame.Parent = AimbotPanel
+
+local FovRgbCorner = Instance.new("UICorner")
+FovRgbCorner.CornerRadius = UDim.new(0, 6)
+FovRgbCorner.Parent = FovRgbFrame
+
+local FovRgbLabel = Instance.new("TextLabel")
+FovRgbLabel.Size = UDim2.new(1, 0, 0, 18)
+FovRgbLabel.BackgroundTransparency = 1
+FovRgbLabel.Text = "FOV Color Picker"
+FovRgbLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+FovRgbLabel.TextSize = 12
+FovRgbLabel.Font = Enum.Font.SourceSansBold
+FovRgbLabel.Parent = FovRgbFrame
+
+local FovColorWheel = Instance.new("TextButton")
+FovColorWheel.Name = "FovColorWheel"
+FovColorWheel.AutoButtonColor = false
+FovColorWheel.Text = ""
+FovColorWheel.Size = UDim2.new(0, 85, 0, 55)
+FovColorWheel.Position = UDim2.new(0, 10, 0, 22)
+FovColorWheel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FovColorWheel.BorderSizePixel = 0
+FovColorWheel.Parent = FovRgbFrame
+
+local FovColorWheelCorner = Instance.new("UICorner")
+FovColorWheelCorner.CornerRadius = UDim.new(0, 6)
+FovColorWheelCorner.Parent = FovColorWheel
+
+local FovUIGradient = Instance.new("UIGradient")
+FovUIGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+})
+FovUIGradient.Parent = FovColorWheel
+
+local FovColorPreview = Instance.new("Frame")
+FovColorPreview.Size = UDim2.new(0, 65, 0, 55)
+FovColorPreview.Position = UDim2.new(0, 105, 0, 22)
+FovColorPreview.BackgroundColor3 = FovColor
+FovColorPreview.BorderSizePixel = 0
+FovColorPreview.Parent = FovRgbFrame
+
+local FovPreviewCorner = Instance.new("UICorner")
+FovPreviewCorner.CornerRadius = UDim.new(0, 6)
+FovPreviewCorner.Parent = FovColorPreview
+
+local TargetLabel = Instance.new("TextLabel")
+TargetLabel.Name = "TargetLabel"
+TargetLabel.Size = UDim2.new(0, 180, 0, 26)
+TargetLabel.Position = UDim2.new(0.5, -90, 0, 288)
+TargetLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TargetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+TargetLabel.TextSize = 12
+TargetLabel.Font = Enum.Font.SourceSans
+TargetLabel.Text = "Target: None"
+TargetLabel.Parent = AimbotPanel
+
+local TargetCorner = Instance.new("UICorner")
+TargetCorner.CornerRadius = UDim.new(0, 6)
+TargetCorner.Parent = TargetLabel
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 180, 0, 28)
+CloseButton.Position = UDim2.new(0.5, -90, 0, 318)
+CloseButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseButton.TextSize = 13
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.Text = "Unload Script"
+CloseButton.Parent = AimbotPanel
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseButton
+
+-- Container for ESP Options Panel
+local EspPanel = Instance.new("Frame")
+EspPanel.Size = UDim2.new(1, 0, 0, 395)
+EspPanel.Position = UDim2.new(0, 0, 0, 75)
+EspPanel.BackgroundTransparency = 1
+EspPanel.Visible = false
+EspPanel.Parent = MainFrame
+
+local function createEspButton(name, posY)
+    local btn = Instance.new("TextButton")
+    btn.Name = name .. "Button"
+    btn.Size = UDim2.new(0, 180, 0, 26)
+    btn.Position = UDim2.new(0.5, -90, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = name .. ": OFF"
+    btn.Parent = EspPanel
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    return btn
+end
+
+local BoxButton = createEspButton("Boxes", 0)
+local RainbowBoxButton = createEspButton("Rainbow Boxes", 32)
+local TracerButton = createEspButton("Tracers", 64)
+local NameButton = createEspButton("Name", 96)
+local HealthButton = createEspButton("Health", 128)
+local DistanceButton = createEspButton("Distance", 160)
+
+local RgbFrame = Instance.new("TextButton")
+RgbFrame.Name = "RgbFrame"
+RgbFrame.AutoButtonColor = false
+RgbFrame.Text = ""
+RgbFrame.Size = UDim2.new(0, 180, 0, 120)
+RgbFrame.Position = UDim2.new(0.5, -90, 0, 194)
+RgbFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+RgbFrame.BorderSizePixel = 0
+RgbFrame.Parent = EspPanel
+
+local RgbCorner = Instance.new("UICorner")
+RgbCorner.CornerRadius = UDim.new(0, 6)
+RgbCorner.Parent = RgbFrame
+
+local RgbLabel = Instance.new("TextLabel")
+RgbLabel.Size = UDim2.new(1, 0, 0, 20)
+RgbLabel.BackgroundTransparency = 1
+RgbLabel.Text = "Box Color Picker (RGB)"
+RgbLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+RgbLabel.TextSize = 12
+RgbLabel.Font = Enum.Font.SourceSansBold
+RgbLabel.Parent = RgbFrame
+
+local ColorWheel = Instance.new("TextButton")
+ColorWheel.Name = "ColorWheel"
+ColorWheel.AutoButtonColor = false
+ColorWheel.Text = ""
+ColorWheel.Size = UDim2.new(0, 90, 0, 90)
+ColorWheel.Position = UDim2.new(0, 10, 0, 24)
+ColorWheel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ColorWheel.BorderSizePixel = 0
+ColorWheel.Parent = RgbFrame
+
+local ColorWheelCorner = Instance.new("UICorner")
+ColorWheelCorner.CornerRadius = UDim.new(1, 0)
+ColorWheelCorner.Parent = ColorWheel
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+})
+UIGradient.Parent = ColorWheel
+
+local ColorPreview = Instance.new("Frame")
+ColorPreview.Size = UDim2.new(0, 60, 0, 90)
+ColorPreview.Position = UDim2.new(0, 110, 0, 24)
+ColorPreview.BackgroundColor3 = BoxColor
+ColorPreview.BorderSizePixel = 0
+ColorPreview.Parent = RgbFrame
+
+local PreviewCorner = Instance.new("UICorner")
+PreviewCorner.CornerRadius = UDim.new(0, 6)
+PreviewCorner.Parent = ColorPreview
+
+-- Container for Player Modifiers Panel
+local PlayerPanel = Instance.new("Frame")
+PlayerPanel.Size = UDim2.new(1, 0, 0, 395)
+PlayerPanel.Position = UDim2.new(0, 0, 0, 75)
+PlayerPanel.BackgroundTransparency = 1
+PlayerPanel.Visible = false
+PlayerPanel.Parent = MainFrame
+
+local WalkSpeedButton = Instance.new("TextButton")
+WalkSpeedButton.Name = "WalkSpeedButton"
+WalkSpeedButton.Size = UDim2.new(0, 180, 0, 32)
+WalkSpeedButton.Position = UDim2.new(0.5, -90, 0, 0)
+WalkSpeedButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+WalkSpeedButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+WalkSpeedButton.TextSize = 13
+WalkSpeedButton.Font = Enum.Font.SourceSansBold
+WalkSpeedButton.Text = "WalkSpeed: OFF"
+WalkSpeedButton.Parent = PlayerPanel
+
+local WalkSpeedCorner = Instance.new("UICorner")
+WalkSpeedCorner.CornerRadius = UDim.new(0, 6)
+WalkSpeedCorner.Parent = WalkSpeedButton
+
+-- WalkSpeed Slider Frame
+local WsSliderFrame = Instance.new("TextButton")
+WsSliderFrame.Name = "WsSliderFrame"
+WsSliderFrame.AutoButtonColor = false
+WsSliderFrame.Text = ""
+WsSliderFrame.Size = UDim2.new(0, 180, 0, 42)
+WsSliderFrame.Position = UDim2.new(0.5, -90, 0, 38)
+WsSliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+WsSliderFrame.BorderSizePixel = 0
+WsSliderFrame.Parent = PlayerPanel
+
+local WsSliderCorner = Instance.new("UICorner")
+WsSliderCorner.CornerRadius = UDim.new(0, 6)
+WsSliderCorner.Parent = WsSliderFrame
+
+local WsSliderLabel = Instance.new("TextLabel")
+WsSliderLabel.Size = UDim2.new(1, 0, 0, 18)
+WsSliderLabel.BackgroundTransparency = 1
+WsSliderLabel.Text = "WalkSpeed Value: " .. WalkSpeedValue
+WsSliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+WsSliderLabel.TextSize = 12
+WsSliderLabel.Font = Enum.Font.SourceSans
+WsSliderLabel.Parent = WsSliderFrame
+
+local WsSliderBar = Instance.new("Frame")
+WsSliderBar.Size = UDim2.new(0, 160, 0, 8)
+WsSliderBar.Position = UDim2.new(0.5, -80, 0, 26)
+WsSliderBar.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+WsSliderBar.BorderSizePixel = 0
+WsSliderBar.Parent = WsSliderFrame
+
+local WsSliderBarCorner = Instance.new("UICorner")
+WsSliderBarCorner.CornerRadius = UDim.new(0, 4)
+WsSliderBarCorner.Parent = WsSliderBar
+
+local WsSliderFill = Instance.new("Frame")
+local wsInitialFill = math.clamp((WalkSpeedValue - 16) / (250 - 16), 0, 1)
+WsSliderFill.Size = UDim2.new(wsInitialFill, 0, 1, 0)
+WsSliderFill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+WsSliderFill.BorderSizePixel = 0
+WsSliderFill.Parent = WsSliderBar
+
+local WsSliderFillCorner = Instance.new("UICorner")
+WsSliderFillCorner.CornerRadius = UDim.new(0, 4)
+WsSliderFillCorner.Parent = WsSliderFill
+
+local FlyButton = Instance.new("TextButton")
+FlyButton.Name = "FlyButton"
+FlyButton.Size = UDim2.new(0, 180, 0, 32)
+FlyButton.Position = UDim2.new(0.5, -90, 0, 86)
+FlyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FlyButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+FlyButton.TextSize = 13
+FlyButton.Font = Enum.Font.SourceSansBold
+FlyButton.Text = "Fly: OFF"
+FlyButton.Parent = PlayerPanel
+
+local FlyCorner = Instance.new("UICorner")
+FlyCorner.CornerRadius = UDim.new(0, 6)
+FlyCorner.Parent = FlyButton
+
+-- Fly Speed Slider Frame
+local FlySliderFrame = Instance.new("TextButton")
+FlySliderFrame.Name = "FlySliderFrame"
+FlySliderFrame.AutoButtonColor = false
+FlySliderFrame.Text = ""
+FlySliderFrame.Size = UDim2.new(0, 180, 0, 42)
+FlySliderFrame.Position = UDim2.new(0.5, -90, 0, 124)
+FlySliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+FlySliderFrame.BorderSizePixel = 0
+FlySliderFrame.Parent = PlayerPanel
+
+local FlySliderCorner = Instance.new("UICorner")
+FlySliderCorner.CornerRadius = UDim.new(0, 6)
+FlySliderCorner.Parent = FlySliderFrame
+
+local FlySliderLabel = Instance.new("TextLabel")
+FlySliderLabel.Size = UDim2.new(1, 0, 0, 18)
+FlySliderLabel.BackgroundTransparency = 1
+FlySliderLabel.Text = "Fly Speed: " .. FlySpeed
+FlySliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+FlySliderLabel.TextSize = 12
+FlySliderLabel.Font = Enum.Font.SourceSans
+FlySliderLabel.Parent = FlySliderFrame
+
+local FlySliderBar = Instance.new("Frame")
+FlySliderBar.Size = UDim2.new(0, 160, 0, 8)
+FlySliderBar.Position = UDim2.new(0.5, -80, 0, 26)
+FlySliderBar.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+FlySliderBar.BorderSizePixel = 0
+FlySliderBar.Parent = FlySliderFrame
+
+local FlySliderBarCorner = Instance.new("UICorner")
+FlySliderBarCorner.CornerRadius = UDim.new(0, 4)
+FlySliderBarCorner.Parent = FlySliderBar
+
+local FlySliderFill = Instance.new("Frame")
+local flyInitialFill = math.clamp((FlySpeed - 10) / (300 - 10), 0, 1)
+FlySliderFill.Size = UDim2.new(flyInitialFill, 0, 1, 0)
+FlySliderFill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+FlySliderFill.BorderSizePixel = 0
+FlySliderFill.Parent = FlySliderBar
+
+local FlySliderFillCorner = Instance.new("UICorner")
+FlySliderFillCorner.CornerRadius = UDim.new(0, 4)
+FlySliderFillCorner.Parent = FlySliderFill
+
+-- Noclip Button
+local NoclipButton = Instance.new("TextButton")
+NoclipButton.Name = "NoclipButton"
+NoclipButton.Size = UDim2.new(0, 180, 0, 32)
+NoclipButton.Position = UDim2.new(0.5, -90, 0, 172)
+NoclipButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+NoclipButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+NoclipButton.TextSize = 13
+NoclipButton.Font = Enum.Font.SourceSansBold
+NoclipButton.Text = "Noclip: OFF"
+NoclipButton.Parent = PlayerPanel
+
+local NoclipCorner = Instance.new("UICorner")
+NoclipCorner.CornerRadius = UDim.new(0, 6)
+NoclipCorner.Parent = NoclipButton
+
+-- Tab Switching Logic
+AimbotTabBtn.MouseButton1Click:Connect(function()
+    AimbotPanel.Visible = true
+    EspPanel.Visible = false
+    PlayerPanel.Visible = false
+    AimbotTabBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    AimbotTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    EspTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    EspTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    PlayerTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    PlayerTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+end)
+
+EspTabBtn.MouseButton1Click:Connect(function()
+    AimbotPanel.Visible = false
+    EspPanel.Visible = true
+    PlayerPanel.Visible = false
+    EspTabBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    EspTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AimbotTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    AimbotTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    PlayerTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    PlayerTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+end)
+
+PlayerTabBtn.MouseButton1Click:Connect(function()
+    AimbotPanel.Visible = false
+    EspPanel.Visible = false
+    PlayerPanel.Visible = true
+    PlayerTabBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    PlayerTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AimbotTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    AimbotTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    EspTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    EspTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+end)
+
+local connections = {}
+
+-- Toggle GUI Visibility via Right Shift
+local guiVisible = true
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == HideGuiKey then
+        guiVisible = not guiVisible
+        MainFrame.Visible = guiVisible
+    end
+end))
+
+local function updateAimbotState()
+    AimbotEnabled = not AimbotEnabled
+    if AimbotEnabled then
+        ToggleButton.Text = "Aimbot: ON"
+        ToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ToggleButton.Text = "Aimbot: OFF"
+        ToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+        TargetLabel.Text = "Target: None"
+    end
+end
+
+table.insert(connections, ToggleButton.MouseButton1Click:Connect(updateAimbotState))
+
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == ToggleKey then
+        updateAimbotState()
+    end
+end))
+
+table.insert(connections, TriggerbotToggleButton.MouseButton1Click:Connect(function()
+    TriggerbotEnabled = not TriggerbotEnabled
+    if TriggerbotEnabled then
+        TriggerbotToggleButton.Text = "Triggerbot: ON"
+        TriggerbotToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        TriggerbotToggleButton.Text = "Triggerbot: OFF"
+        TriggerbotToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end))
+
+-- Triggerbot Mode Toggle Connection (Left / Right Click)
+table.insert(connections, TriggerbotModeButton.MouseButton1Click:Connect(function()
+    if TriggerbotMode == "Left" then
+        TriggerbotMode = "Right"
+        TriggerbotModeButton.Text = "Trigger Click: Right"
+    else
+        TriggerbotMode = "Left"
+        TriggerbotModeButton.Text = "Trigger Click: Left"
+    end
+end))
+
+table.insert(connections, FovToggleButton.MouseButton1Click:Connect(function()
+    FovEnabled = not FovEnabled
+    if FovEnabled then
+        FovToggleButton.Text = "FOV Circle: ON"
+        FovToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+        FovCircle.Visible = true
+    else
+        FovToggleButton.Text = "FOV Circle: OFF"
+        FovToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+        FovCircle.Visible = false
+    end
+end))
+
+-- Player Modifiers Toggles
+table.insert(connections, WalkSpeedButton.MouseButton1Click:Connect(function()
+    WalkSpeedEnabled = not WalkSpeedEnabled
+    if WalkSpeedEnabled then
+        WalkSpeedButton.Text = "WalkSpeed: ON"
+        WalkSpeedButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        WalkSpeedButton.Text = "WalkSpeed: OFF"
+        WalkSpeedButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+        end
+    end
+end))
+
+table.insert(connections, FlyButton.MouseButton1Click:Connect(function()
+    FlyEnabled = not FlyEnabled
+    if FlyEnabled then
+        FlyButton.Text = "Fly: ON"
+        FlyButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Animate") then
+            cachedAnimateScript = LocalPlayer.Character.Animate
+            cachedAnimateScript.Enabled = false
+        end
+    else
+        FlyButton.Text = "Fly: OFF"
+        FlyButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        end
+        if cachedAnimateScript and cachedAnimateScript.Parent then
+            cachedAnimateScript.Enabled = true
+        end
+    end
+end))
+
+table.insert(connections, NoclipButton.MouseButton1Click:Connect(function()
+    NoclipEnabled = not NoclipEnabled
+    if NoclipEnabled then
+        NoclipButton.Text = "Noclip: ON"
+        NoclipButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        NoclipButton.Text = "Noclip: OFF"
+        NoclipButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end))
+
+-- WalkSpeed Slider Dragging Logic
+local draggingWsSlider = false
+table.insert(connections, WsSliderFrame.MouseButton1Down:Connect(function()
+    draggingWsSlider = true
+end))
+table.insert(connections, WsSliderBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingWsSlider = true
+    end
+end))
+
+-- Fly Speed Slider Dragging Logic
+local draggingFlySlider = false
+table.insert(connections, FlySliderFrame.MouseButton1Down:Connect(function()
+    draggingFlySlider = true
+end))
+table.insert(connections, FlySliderBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingFlySlider = true
+    end
+end))
+
+table.insert(connections, UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingWsSlider = false
+        draggingFlySlider = false
+    end
+end))
+
+table.insert(connections, UserInputService.InputChanged:Connect(function(input)
+    if (draggingWsSlider or draggingFlySlider) and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        if draggingWsSlider then
+            local barAbsPos = WsSliderBar.AbsolutePosition
+            local barAbsSize = WsSliderBar.AbsoluteSize
+            local relativeX = math.clamp(mousePos.X - barAbsPos.X, 0, barAbsSize.X)
+            local percentage = relativeX / barAbsSize.X
+            
+            WalkSpeedValue = math.floor(16 + (percentage * (250 - 16)))
+            WsSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            WsSliderLabel.Text = "WalkSpeed Value: " .. WalkSpeedValue
+        elseif draggingFlySlider then
+            local barAbsPos = FlySliderBar.AbsolutePosition
+            local barAbsSize = FlySliderBar.AbsoluteSize
+            local relativeX = math.clamp(mousePos.X - barAbsPos.X, 0, barAbsSize.X)
+            local percentage = relativeX / barAbsSize.X
+            
+            FlySpeed = math.floor(10 + (percentage * (300 - 10)))
+            FlySliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            FlySliderLabel.Text = "Fly Speed: " .. FlySpeed
+        end
+    end
+end))
+
+-- FOV Slider & Color Pickers Logic
+local draggingSlider = false
+table.insert(connections, SliderFrame.MouseButton1Down:Connect(function()
+    draggingSlider = true
+end))
+table.insert(connections, SliderBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = true
+    end
+end))
+
+local pickingFovColor = false
+table.insert(connections, FovColorWheel.MouseButton1Down:Connect(function()
+    pickingFovColor = true
+end))
+
+local pickingColor = false
+table.insert(connections, ColorWheel.MouseButton1Down:Connect(function()
+    pickingColor = true
+end))
+
+table.insert(connections, UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = false
+        pickingFovColor = false
+        pickingColor = false
+    end
+end))
+
+table.insert(connections, UserInputService.InputChanged:Connect(function(input)
+    local mousePos = UserInputService:GetMouseLocation()
+    if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local barAbsolutePosition = SliderBar.AbsolutePosition
+        local barAbsoluteSize = SliderBar.AbsoluteSize
+        
+        local relativeX = math.clamp(mousePos.X - barAbsolutePosition.X, 0, barAbsoluteSize.X)
+        local percentage = relativeX / barAbsoluteSize.X
+        
+        FovRadius = math.floor(50 + (percentage * (400 - 50)))
+        SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+        SliderLabel.Text = "FOV Radius: " .. FovRadius
+        FovCircle.Radius = FovRadius
+    elseif pickingFovColor and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local wheelPos = FovColorWheel.AbsolutePosition
+        local wheelSize = FovColorWheel.AbsoluteSize
+        
+        local relX = math.clamp(mousePos.X - wheelPos.X, 0, wheelSize.X)
+        local hue = relX / wheelSize.X
+        FovColor = Color3.fromHSV(hue, 1, 1)
+        FovColorPreview.BackgroundColor3 = FovColor
+        FovCircle.Color = FovColor
+    elseif pickingColor and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local wheelPos = ColorWheel.AbsolutePosition
+        local wheelSize = ColorWheel.AbsoluteSize
+        
+        local relX = math.clamp(mousePos.X - wheelPos.X, 0, wheelSize.X)
+        local hue = relX / wheelSize.X
+        BoxColor = Color3.fromHSV(hue, 1, 1)
+        ColorPreview.BackgroundColor3 = BoxColor
+    end
+end))
+
+local function setupToggle(button, getState, setState, labelName)
+    table.insert(connections, button.MouseButton1Click:Connect(function()
+        local newState = not getState()
+        setState(newState)
+        if newState then
+            button.Text = labelName .. ": ON"
+            button.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            button.Text = labelName .. ": OFF"
+            button.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end))
+end
+
+setupToggle(BoxButton, function() return EspBoxesEnabled end, function(v) EspBoxesEnabled = v end, "Boxes")
+setupToggle(RainbowBoxButton, function() return RainbowBoxesEnabled end, function(v) RainbowBoxesEnabled = v end, "Rainbow Boxes")
+setupToggle(TracerButton, function() return EspTracersEnabled end, function(v) EspTracersEnabled = v end, "Tracers")
+setupToggle(NameButton, function() return EspNamesEnabled end, function(v) EspNamesEnabled = v end, "Name")
+setupToggle(HealthButton, function() return EspHealthEnabled end, function(v) EspHealthEnabled = v end, "Health")
+setupToggle(DistanceButton, function() return EspDistanceEnabled end, function(v) EspDistanceEnabled = v end, "Distance")
+
+local function removeEspForPlayer(player)
+    if espDrawings[player] then
+        for _, drawing in pairs(espDrawings[player]) do
+            if drawing and drawing.Remove then
+                drawing:Remove()
+            end
+        end
+        espDrawings[player] = nil
+    end
+end
+
+table.insert(connections, CloseButton.MouseButton1Click:Connect(function()
+    for _, conn in ipairs(connections) do
+        conn:Disconnect()
+    end
+    if FovCircle and FovCircle.Remove then
+        FovCircle:Remove()
+    end
+    if cachedAnimateScript and cachedAnimateScript.Parent then
+        cachedAnimateScript.Enabled = true
+    end
+    for player, _ in pairs(espDrawings) do
+        removeEspForPlayer(player)
+    end
+    ScreenGui:Destroy()
+end))
+
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local mouseLocation = UserInputService:GetMouseLocation()
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local targetPart = player.Character:FindFirstChild("Head") 
+                    or player.Character:FindFirstChild("UpperTorso") 
+                    or player.Character:FindFirstChild("HumanoidRootPart")
+                    or player.Character:FindFirstChild("Torso")
+                    
+                if targetPart then
+                    local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    
+                    if onScreen and screenPoint.Z > 0 then
+                        local screenPos2D = Vector2.new(screenPoint.X, screenPoint.Y)
+                        local distance = (screenPos2D - mouseLocation).Magnitude
+
+                        if distance <= FovRadius and distance < shortestDistance then
+                            shortestDistance = distance
+                            closestPlayer = player
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function isMouseOverTarget()
+    local mouse = LocalPlayer:GetMouse()
+    local target = mouse.Target
+    if target and target.Parent then
+        local character = target.Parent
+        local player = Players:GetPlayerFromCharacter(character)
+        if player and player ~= LocalPlayer then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+table.insert(connections, RunService.RenderStepped:Connect(function()
+    Camera.CameraType = Enum.CameraType.Custom
+
+    -- Handle Player Modifiers (WalkSpeed, Fly, Noclip)
+    local char = LocalPlayer.Character
+    if char then
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        local rootPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+        
+        if humanoid then
+            if WalkSpeedEnabled then
+                humanoid.WalkSpeed = WalkSpeedValue
+            end
+        end
+
+        if NoclipEnabled then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+
+        if FlyEnabled and rootPart then
+            local moveDir = Vector3.new(0, 0, 0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDir = moveDir + Camera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDir = moveDir - Camera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDir = moveDir - Camera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDir = moveDir + Camera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveDir = moveDir + Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                moveDir = moveDir - Vector3.new(0, 1, 0)
+            end
+
+            rootPart.Velocity = moveDir * FlySpeed
+            rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z))
+        end
+    end
+
+    if FovEnabled then
+        local mousePos = UserInputService:GetMouseLocation()
+        FovCircle.Position = mousePos
+        FovCircle.Visible = true
+    else
+        FovCircle.Visible = false
+    end
+
+    if AimbotEnabled then
+        local target = getClosestPlayer()
+        if target and target.Character then
+            local targetPart = target.Character:FindFirstChild("Head") 
+                or target.Character:FindFirstChild("UpperTorso") 
+                or target.Character:FindFirstChild("HumanoidRootPart")
+                or target.Character:FindFirstChild("Torso")
+                
+            if targetPart then
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPart.Position)
+                TargetLabel.Text = "Target: " .. target.Name
+            else
+                TargetLabel.Text = "Target: None"
+            end
+        else
+            TargetLabel.Text = "Target: None"
+        end
+    else
+        TargetLabel.Text = "Target: None"
+    end
+
+    if TriggerbotEnabled then
+        if isMouseOverTarget() then
+            local mouseLoc = UserInputService:GetMouseLocation()
+            if TriggerbotMode == "Left" then
+                VirtualInputManager:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 0, false, game, 0)
+            else
+                VirtualInputManager:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 1, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 1, false, game, 0)
+            end
+        end
+    end
+
+    local activePlayers = {}
+    
+    local viewportSize = Camera.ViewportSize
+    local tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y)
+
+    local currentBoxColor = BoxColor
+    if RainbowBoxesEnabled then
+        local hue = (tick() % 5) / 5
+        currentBoxColor = Color3.fromHSV(hue, 1, 1)
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
+            
+            if humanoid and humanoid.Health > 0 and rootPart then
+                activePlayers[player] = true
+                
+                if not espDrawings[player] then
+                    espDrawings[player] = {
+                        Box = Drawing.new("Square"),
+                        Tracer = Drawing.new("Line"),
+                        NameTag = Drawing.new("Text"),
+                        InfoTag = Drawing.new("Text")
+                    }
+                    espDrawings[player].Box.Visible = false
+                    espDrawings[player].Box.Thickness = 1.5
+                    espDrawings[player].Box.Filled = false
+
+                    espDrawings[player].Tracer.Visible = false
+                    espDrawings[player].Tracer.Thickness = 1.5
+                    espDrawings[player].Tracer.Color = Color3.fromRGB(255, 255, 255)
+
+                    espDrawings[player].NameTag.Visible = false
+                    espDrawings[player].NameTag.Size = 14
+                    espDrawings[player].NameTag.Center = true
+                    espDrawings[player].NameTag.Outline = true
+                    espDrawings[player].NameTag.Color = Color3.fromRGB(255, 255, 255)
+
+                    espDrawings[player].InfoTag.Visible = false
+                    espDrawings[player].InfoTag.Size = 13
+                    espDrawings[player].InfoTag.Center = true
+                    espDrawings[player].InfoTag.Outline = true
+                    espDrawings[player].InfoTag.Color = Color3.fromRGB(200, 200, 200)
+                end
+
+                local visuals = espDrawings[player]
+                local cf, size = character:GetBoundingBox()
+                local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+
+                if onScreen and screenPosition.Z > 0 then
+                    local topPoint = Camera:WorldToViewportPoint((cf + Vector3.new(0, size.Y / 2, 0)).Position)
+                    local bottomPoint = Camera:WorldToViewportPoint((cf - Vector3.new(0, size.Y / 2, 0)).Position)
+                    local boxHeight = math.abs(topPoint.Y - bottomPoint.Y)
+                    local boxWidth = boxHeight / 2
+
+                    if EspBoxesEnabled then
+                        visuals.Box.Size = Vector2.new(boxWidth, boxHeight)
+                        visuals.Box.Position = Vector2.new(screenPosition.X - boxWidth / 2, topPoint.Y)
+                        visuals.Box.Color = currentBoxColor
+                        visuals.Box.Visible = true
+                    else
+                        visuals.Box.Visible = false
+                    end
+
+                    if EspTracersEnabled then
+                        visuals.Tracer.From = tracerOrigin
+                        visuals.Tracer.To = Vector2.new(screenPosition.X, bottomPoint.Y)
+                        visuals.Tracer.Visible = true
+                    else
+                        visuals.Tracer.Visible = false
+                    end
+
+                    if EspNamesEnabled then
+                        visuals.NameTag.Text = player.Name
+                        visuals.NameTag.Position = Vector2.new(screenPosition.X, topPoint.Y - 18)
+                        visuals.NameTag.Visible = true
+                    else
+                        visuals.NameTag.Visible = false
+                    end
+
+                    local infoTextParts = {}
+                    if EspHealthEnabled then
+                        table.insert(infoTextParts, "HP: " .. math.floor(humanoid.Health))
+                    end
+                    if EspDistanceEnabled then
+                        local distanceVal = math.floor((Camera.CFrame.Position - rootPart.Position).Magnitude)
+                        table.insert(infoTextParts, distanceVal .. " studs")
+                    end
+
+                    if #infoTextParts > 0 then
+                        visuals.InfoTag.Text = table.concat(infoTextParts, " | ")
+                        visuals.InfoTag.Position = Vector2.new(screenPosition.X, bottomPoint.Y + 4)
+                        visuals.InfoTag.Visible = true
+                    else
+                        visuals.InfoTag.Visible = false
+                    end
+                else
+                    visuals.Box.Visible = false
+                    visuals.Tracer.Visible = false
+                    visuals.NameTag.Visible = false
+                    visuals.InfoTag.Visible = false
+                end
+            else
+                removeEspForPlayer(player)
+            end
+        end
+    end
+
+    for player, _ in pairs(espDrawings) do
+        if not activePlayers[player] then
+            removeEspForPlayer(player)
+        end
+    end
+end))
