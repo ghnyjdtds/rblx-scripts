@@ -1,4 +1,4 @@
--- Roblox Aimbot, Triggerbot, ESP, ESP Hitboxes, Teleport & Player Modifiers Script (KnifeDuel Bot)
+-- Roblox Aimbot, Triggerbot, ESP, ESP Hitboxes, Teleport & Player Modifiers Script (DuelHub)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -58,10 +58,82 @@ local SidebarColor = Color3.fromRGB(20, 20, 20)
 
 -- Create GUI: Purple Glow Hub
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KnifeDuelBot_GlowHub"
+ScreenGui.Name = "DuelHub_GlowHub"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- 5-Second Loading Screen
+local LoadingFrame = Instance.new("Frame")
+LoadingFrame.Name = "LoadingFrame"
+LoadingFrame.Size = UDim2.new(0, 300, 0, 120)
+LoadingFrame.Position = UDim2.new(0.5, -150, 0.5, -60)
+LoadingFrame.BackgroundColor3 = BackgroundColor
+LoadingFrame.BorderSizePixel = 0
+LoadingFrame.Parent = ScreenGui
+
+local LoadingCorner = Instance.new("UICorner")
+LoadingCorner.CornerRadius = UDim.new(0, 10)
+LoadingCorner.Parent = LoadingFrame
+
+local LoadingGlow = Instance.new("UIStroke")
+LoadingGlow.Color = AccentColor
+LoadingGlow.Thickness = 2
+LoadingGlow.Transparency = 0.2
+LoadingGlow.Parent = LoadingFrame
+
+local LoadingTitle = Instance.new("TextLabel")
+LoadingTitle.Size = UDim2.new(1, 0, 0, 40)
+LoadingTitle.Position = UDim2.new(0, 0, 0, 15)
+LoadingTitle.BackgroundTransparency = 1
+LoadingTitle.Text = "DUELHUB"
+LoadingTitle.TextColor3 = AccentColor
+LoadingTitle.TextSize = 16
+LoadingTitle.Font = Enum.Font.GothamBold
+LoadingTitle.Parent = LoadingFrame
+
+local LoadingText = Instance.new("TextLabel")
+LoadingText.Size = UDim2.new(1, 0, 0, 20)
+LoadingText.Position = UDim2.new(0, 0, 0, 55)
+LoadingText.BackgroundTransparency = 1
+LoadingText.Text = "Loading Hub..."
+LoadingText.TextColor3 = Color3.fromRGB(200, 200, 200)
+LoadingText.TextSize = 13
+LoadingText.Font = Enum.Font.Gotham
+LoadingText.Parent = LoadingFrame
+
+local BarBg = Instance.new("Frame")
+BarBg.Size = UDim2.new(0, 250, 0, 8)
+BarBg.Position = UDim2.new(0.5, -125, 0, 85)
+BarBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BarBg.BorderSizePixel = 0
+BarBg.Parent = LoadingFrame
+
+local BarBgCorner = Instance.new("UICorner")
+BarBgCorner.CornerRadius = UDim.new(1, 0)
+BarBgCorner.Parent = BarBg
+
+local BarFill = Instance.new("Frame")
+BarFill.Size = UDim2.new(0, 0, 1, 0)
+BarFill.BackgroundColor3 = AccentColor
+BarFill.BorderSizePixel = 0
+BarFill.Parent = BarBg
+
+local BarFillCorner = Instance.new("UICorner")
+BarFillCorner.CornerRadius = UDim.new(1, 0)
+BarFillCorner.Parent = BarFill
+
+local BarGlow = Instance.new("UIStroke")
+BarGlow.Color = AccentColor
+BarGlow.Thickness = 1
+BarGlow.Transparency = 0.5
+BarGlow.Parent = BarFill
+
+-- Animate loading bar over 5 seconds
+TweenService:Create(BarFill, TweenInfo.new(5, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+task.wait(5)
+LoadingFrame:Destroy()
+
+-- Main Frame (Hidden initially, then shown after loading)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 600, 0, 380)
@@ -69,8 +141,44 @@ MainFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 MainFrame.BackgroundColor3 = BackgroundColor
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true
+MainFrame.Draggable = false -- Disabled default dragging to use smooth interpolation
 MainFrame.Parent = ScreenGui
+
+-- Smooth Dragging Logic (Interpolated for buttery smooth movement)
+local dragging, dragInput, dragStart, startPos
+table.insert(connections, MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end))
+
+table.insert(connections, MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end))
+
+table.insert(connections, RunService.RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        local targetPos = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+        -- Smoothly interpolate towards target mouse position
+        MainFrame.Position = MainFrame.Position:Lerp(targetPos, 0.25)
+    end
+end))
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 10)
@@ -105,7 +213,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, 0, 0, 60)
 TitleLabel.Position = UDim2.new(0, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "KNIFEDUEL HUB"
+TitleLabel.Text = "DUELHUB"
 TitleLabel.TextColor3 = AccentColor
 TitleLabel.TextSize = 16
 TitleLabel.Font = Enum.Font.GothamBold
@@ -532,7 +640,6 @@ local function createRgbInputPicker(parent, text, defaultColor, callback)
     table.insert(connections, box.FocusLost:Connect(function(enterPressed)
         local r, g, b = box.Text:match("RGB%s*(%d+)%D+(%d+)%D+(%d+)")
         if not r then
-            -- Fallback if user cleared the prefix while typing
             r, g, b = box.Text:match("(%d+)%D+(%d+)%D+(%d+)")
         end
         
