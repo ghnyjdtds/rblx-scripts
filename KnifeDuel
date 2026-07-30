@@ -1,9 +1,11 @@
--- Roblox Aimbot, Triggerbot, ESP, ESP Hitboxes, Teleport & Player Modifiers Script (DuelHub)
+-- Roblox Aimbot, Triggerbot, ESP, ESP Hitboxes, Teleport & Player Modifiers Script (DuelHub - Click Sidebar Edition)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -24,12 +26,14 @@ local WalkSpeedValue = 16
 local FlyEnabled = false
 local FlySpeed = 50
 local NoclipEnabled = false
+local CustomFovEnabled = false
+local CustomFovValue = 70
 local cachedAnimateScript = nil
 
 -- FOV Configuration
 local FovEnabled = false
 local FovRadius = 150
-local FovColor = Color3.fromRGB(255, 255, 255)
+local FovColor = Color3.fromRGB(168, 85, 247)
 local FovCircle = Drawing.new("Circle")
 FovCircle.Visible = false
 FovCircle.Thickness = 1.5
@@ -46,33 +50,64 @@ local EspHealthEnabled = false
 local EspDistanceEnabled = false
 local EspHitboxesEnabled = false
 local RainbowBoxesEnabled = false
-local BoxColor = Color3.fromRGB(255, 255, 255)
+local BoxColor = Color3.fromRGB(168, 85, 247)
 
 local espDrawings = {}
 local connections = {}
 
--- Theme Colors
-local AccentColor = Color3.fromRGB(160, 32, 240) -- Vibrant Purple
-local BackgroundColor = Color3.fromRGB(25, 25, 25)
-local SidebarColor = Color3.fromRGB(20, 20, 20)
+-- Dark Glass Theme Colors (Sleek black with neon purple accents)
+local AccentColor = Color3.fromRGB(168, 85, 247) -- Vibrant Purple
+local GlassBaseColor = Color3.fromRGB(18, 20, 28)  -- Deep Dark Glass Base
+local UI_Font = Enum.Font.FredokaOne
 
--- Create GUI: Purple Glow Hub
+-- Custom Click Sound Asset (Louder volume at 1.5)
+local ClickSound = Instance.new("Sound")
+ClickSound.SoundId = "rbxassetid://88442833509532"
+ClickSound.Volume = 1.5
+ClickSound.Parent = SoundService
+
+local function playClickSound()
+    ClickSound:Play()
+end
+
+-- Create GUI: Protected ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DuelHub_GlowHub"
+ScreenGui.Name = "DuelHub_ClickSidebar"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 999999
 
--- 5-Second Loading Screen
+local success = pcall(function()
+    if syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    elseif gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
+end)
+if not success then
+    pcall(function()
+        ScreenGui.Parent = CoreGui
+    end)
+    if not ScreenGui.Parent then
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+end
+
+-- 3-Second Loading Screen
 local LoadingFrame = Instance.new("Frame")
 LoadingFrame.Name = "LoadingFrame"
-LoadingFrame.Size = UDim2.new(0, 300, 0, 120)
-LoadingFrame.Position = UDim2.new(0.5, -150, 0.5, -60)
-LoadingFrame.BackgroundColor3 = BackgroundColor
+LoadingFrame.Size = UDim2.new(0, 320, 0, 130)
+LoadingFrame.Position = UDim2.new(0.5, -160, 0.5, -65)
+LoadingFrame.BackgroundColor3 = GlassBaseColor
+LoadingFrame.BackgroundTransparency = 0.2
 LoadingFrame.BorderSizePixel = 0
 LoadingFrame.Parent = ScreenGui
 
 local LoadingCorner = Instance.new("UICorner")
-LoadingCorner.CornerRadius = UDim.new(0, 10)
+LoadingCorner.CornerRadius = UDim.new(0, 22)
 LoadingCorner.Parent = LoadingFrame
 
 local LoadingGlow = Instance.new("UIStroke")
@@ -83,28 +118,29 @@ LoadingGlow.Parent = LoadingFrame
 
 local LoadingTitle = Instance.new("TextLabel")
 LoadingTitle.Size = UDim2.new(1, 0, 0, 40)
-LoadingTitle.Position = UDim2.new(0, 0, 0, 15)
+LoadingTitle.Position = UDim2.new(0, 0, 0, 20)
 LoadingTitle.BackgroundTransparency = 1
 LoadingTitle.Text = "DUELHUB"
 LoadingTitle.TextColor3 = AccentColor
-LoadingTitle.TextSize = 16
-LoadingTitle.Font = Enum.Font.GothamBold
+LoadingTitle.TextSize = 20
+LoadingTitle.Font = UI_Font
 LoadingTitle.Parent = LoadingFrame
 
 local LoadingText = Instance.new("TextLabel")
 LoadingText.Size = UDim2.new(1, 0, 0, 20)
-LoadingText.Position = UDim2.new(0, 0, 0, 55)
+LoadingText.Position = UDim2.new(0, 0, 0, 60)
 LoadingText.BackgroundTransparency = 1
-LoadingText.Text = "Loading Hub..."
-LoadingText.TextColor3 = Color3.fromRGB(200, 200, 200)
-LoadingText.TextSize = 13
-LoadingText.Font = Enum.Font.Gotham
+LoadingText.Text = "Loading DuelHub"
+LoadingText.TextColor3 = Color3.fromRGB(160, 165, 185)
+LoadingText.TextSize = 12
+LoadingText.Font = UI_Font
 LoadingText.Parent = LoadingFrame
 
 local BarBg = Instance.new("Frame")
-BarBg.Size = UDim2.new(0, 250, 0, 8)
-BarBg.Position = UDim2.new(0.5, -125, 0, 85)
-BarBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BarBg.Size = UDim2.new(0, 260, 0, 6)
+BarBg.Position = UDim2.new(0.5, -130, 0, 95)
+BarBg.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+BarBg.BackgroundTransparency = 0.3
 BarBg.BorderSizePixel = 0
 BarBg.Parent = LoadingFrame
 
@@ -122,29 +158,23 @@ local BarFillCorner = Instance.new("UICorner")
 BarFillCorner.CornerRadius = UDim.new(1, 0)
 BarFillCorner.Parent = BarFill
 
-local BarGlow = Instance.new("UIStroke")
-BarGlow.Color = AccentColor
-BarGlow.Thickness = 1
-BarGlow.Transparency = 0.5
-BarGlow.Parent = BarFill
-
--- Animate loading bar over 5 seconds
-TweenService:Create(BarFill, TweenInfo.new(5, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-task.wait(5)
+TweenService:Create(BarFill, TweenInfo.new(3, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+task.wait(3)
 LoadingFrame:Destroy()
 
--- Main Frame (Hidden initially, then shown after loading)
+-- Main Frame (Dark Glass Layout: 680x400)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 600, 0, 380)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
-MainFrame.BackgroundColor3 = BackgroundColor
+MainFrame.Size = UDim2.new(0, 680, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -340, 0.5, -200)
+MainFrame.BackgroundColor3 = GlassBaseColor
+MainFrame.BackgroundTransparency = 0.25
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = false -- Disabled default dragging to use smooth interpolation
+MainFrame.Draggable = false
 MainFrame.Parent = ScreenGui
 
--- Smooth Dragging Logic (Interpolated for buttery smooth movement)
+-- Smooth Dragging Logic
 local dragging, dragInput, dragStart, startPos
 table.insert(connections, MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -175,102 +205,110 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
             startPos.Y.Scale, 
             startPos.Y.Offset + delta.Y
         )
-        -- Smoothly interpolate towards target mouse position
         MainFrame.Position = MainFrame.Position:Lerp(targetPos, 0.25)
     end
 end))
 
 local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.CornerRadius = UDim.new(0, 24)
 UICorner.Parent = MainFrame
 
--- Outer Glowing Stroke for the Hub
+-- Outer Specular Purple Accent Border Stroke
 local MainGlow = Instance.new("UIStroke")
 MainGlow.Color = AccentColor
-MainGlow.Thickness = 2.5
-MainGlow.Transparency = 0.2
+MainGlow.Thickness = 1.8
+MainGlow.Transparency = 0.3
 MainGlow.Parent = MainFrame
 
--- Sidebar for Tabs
+-- Left Dark Glass Sidebar Container
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 160, 1, 0)
-Sidebar.BackgroundColor3 = SidebarColor
+Sidebar.Size = UDim2.new(0, 140, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+Sidebar.BackgroundTransparency = 0.4
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = MainFrame
 
 local SidebarCorner = Instance.new("UICorner")
-SidebarCorner.CornerRadius = UDim.new(0, 10)
+SidebarCorner.CornerRadius = UDim.new(0, 24)
 SidebarCorner.Parent = Sidebar
 
-local SidebarBlend = Instance.new("Frame")
-SidebarBlend.Size = UDim2.new(0, 10, 1, 0)
-SidebarBlend.Position = UDim2.new(1, -10, 0, 0)
-SidebarBlend.BackgroundColor3 = SidebarColor
-SidebarBlend.BorderSizePixel = 0
-SidebarBlend.Parent = Sidebar
+local SidebarLine = Instance.new("Frame")
+SidebarLine.Size = UDim2.new(0, 1, 1, -20)
+SidebarLine.Position = UDim2.new(1, 0, 0, 10)
+SidebarLine.BackgroundColor3 = Color3.fromRGB(60, 68, 90)
+SidebarLine.BackgroundTransparency = 0.5
+SidebarLine.BorderSizePixel = 0
+SidebarLine.Parent = Sidebar
 
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 60)
-TitleLabel.Position = UDim2.new(0, 0, 0, 0)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "DUELHUB"
-TitleLabel.TextColor3 = AccentColor
-TitleLabel.TextSize = 16
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Parent = Sidebar
+-- Header Logo Area with Eye Icon and "DuelHub" title
+local LogoContainer = Instance.new("Frame")
+LogoContainer.Size = UDim2.new(1, 0, 0, 60)
+LogoContainer.BackgroundTransparency = 1
+LogoContainer.Parent = Sidebar
 
-local TitleGlow = Instance.new("UIStroke")
-TitleGlow.Color = AccentColor
-TitleGlow.Thickness = 0.8
-TitleGlow.Transparency = 0.5
-TitleGlow.Parent = TitleLabel
+local LogoText = Instance.new("TextLabel")
+LogoText.Size = UDim2.new(1, 0, 0, 24)
+LogoText.Position = UDim2.new(0, 0, 0, 12)
+LogoText.BackgroundTransparency = 1
+LogoText.Text = "👁 DuelHub"
+LogoText.TextColor3 = AccentColor
+LogoText.TextSize = 14
+LogoText.Font = UI_Font
+LogoText.Parent = LogoContainer
 
+-- Tab Container shifted down below logo area
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 1, -60)
-TabContainer.Position = UDim2.new(0, 0, 0, 60)
+TabContainer.Size = UDim2.new(1, 0, 1, -70)
+TabContainer.Position = UDim2.new(0, 0, 0, 65)
 TabContainer.BackgroundTransparency = 1
 TabContainer.Parent = Sidebar
 
 local TabListLayout = Instance.new("UIListLayout")
 TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabListLayout.Padding = UDim.new(0, 5)
+TabListLayout.Padding = UDim.new(0, 8)
 TabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 TabListLayout.Parent = TabContainer
 
 -- Content Area
 local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -160, 1, 0)
-ContentArea.Position = UDim2.new(0, 160, 0, 0)
+ContentArea.Size = UDim2.new(1, -150, 1, 0)
+ContentArea.Position = UDim2.new(0, 150, 0, 0)
 ContentArea.BackgroundTransparency = 1
 ContentArea.Parent = MainFrame
 
--- UI Builder Functions
+-- UI Builder Functions (Dark Glass Styling)
 local tabs = {}
 local panels = {}
 local activeTab = nil
-local activeTabStroke = nil
 
 local function createTab(name)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.85, 0, 0, 35)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamMedium
+    btn.Size = UDim2.new(0.86, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
+    btn.BackgroundTransparency = 0.5
+    btn.TextColor3 = Color3.fromRGB(150, 160, 185)
+    btn.TextSize = 13
+    btn.Font = UI_Font
     btn.Text = name
     btn.AutoButtonColor = false
     btn.Parent = TabContainer
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 14)
     corner.Parent = btn
 
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Color = Color3.fromRGB(70, 80, 110)
+    btnStroke.Thickness = 1
+    btnStroke.Transparency = 0.6
+    btnStroke.Parent = btn
+
     local panel = Instance.new("ScrollingFrame")
-    panel.Size = UDim2.new(1, -30, 1, -30)
-    panel.Position = UDim2.new(0, 15, 0, 15)
+    panel.Size = UDim2.new(1, -24, 1, -24)
+    panel.Position = UDim2.new(0, 12, 0, 12)
     panel.BackgroundTransparency = 1
-    panel.ScrollBarThickness = 4
-    panel.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+    panel.ScrollBarThickness = 3
+    panel.ScrollBarImageColor3 = Color3.fromRGB(80, 90, 120)
     panel.Visible = false
     panel.Parent = ContentArea
 
@@ -284,23 +322,19 @@ local function createTab(name)
     end)
 
     btn.MouseButton1Click:Connect(function()
+        playClickSound()
         if activeTab then
-            activeTab.btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            activeTab.btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            activeTab.btn.BackgroundColor3 = Color3.fromRGB(30, 35, 48)
+            activeTab.btn.BackgroundTransparency = 0.5
+            activeTab.btn.TextColor3 = Color3.fromRGB(150, 160, 185)
             activeTab.panel.Visible = false
-            if activeTabStroke then activeTabStroke:Destroy() end
         end
         
         activeTab = {btn = btn, panel = panel}
         btn.BackgroundColor3 = AccentColor
+        btn.BackgroundTransparency = 0.15
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         panel.Visible = true
-
-        activeTabStroke = Instance.new("UIStroke")
-        activeTabStroke.Color = AccentColor
-        activeTabStroke.Thickness = 1.5
-        activeTabStroke.Transparency = 0.2
-        activeTabStroke.Parent = btn
     end)
 
     table.insert(tabs, btn)
@@ -309,14 +343,9 @@ local function createTab(name)
     if #tabs == 1 then
         activeTab = {btn = btn, panel = panel}
         btn.BackgroundColor3 = AccentColor
+        btn.BackgroundTransparency = 0.15
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         panel.Visible = true
-        
-        activeTabStroke = Instance.new("UIStroke")
-        activeTabStroke.Color = AccentColor
-        activeTabStroke.Thickness = 1.5
-        activeTabStroke.Transparency = 0.2
-        activeTabStroke.Parent = btn
     end
 
     return panel
@@ -324,67 +353,70 @@ end
 
 local function createToggle(parent, text, defaultState, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 36)
-    container.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    container.Size = UDim2.new(1, 0, 0, 42)
+    container.BackgroundColor3 = Color3.fromRGB(25, 29, 40)
+    container.BackgroundTransparency = 0.5
     container.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = container
 
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = Color3.fromRGB(60, 70, 95)
+    containerStroke.Thickness = 1
+    containerStroke.Transparency = 0.6
+    containerStroke.Parent = container
+
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -70, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
+    label.Size = UDim2.new(1, -85, 1, 0)
+    label.Position = UDim2.new(0, 16, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextColor3 = Color3.fromRGB(215, 222, 240)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 13
+    label.Font = UI_Font
+    label.TextSize = 12
     label.Parent = container
 
     local toggleBg = Instance.new("TextButton")
-    toggleBg.Size = UDim2.new(0, 46, 0, 24)
-    toggleBg.Position = UDim2.new(1, -60, 0.5, -12)
-    toggleBg.BackgroundColor3 = defaultState and AccentColor or Color3.fromRGB(70, 70, 70)
-    toggleBg.Text = ""
+    toggleBg.Size = UDim2.new(0, 56, 0, 28)
+    toggleBg.Position = UDim2.new(1, -68, 0.5, -14)
+    toggleBg.BackgroundColor3 = defaultState and AccentColor or Color3.fromRGB(35, 41, 56)
+    toggleBg.BackgroundTransparency = defaultState and 0.15 or 0.4
+    toggleBg.Text = defaultState and "ON" or "OFF"
+    toggleBg.TextColor3 = defaultState and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(140, 150, 175)
+    toggleBg.TextSize = 10
+    toggleBg.Font = UI_Font
     toggleBg.AutoButtonColor = false
     toggleBg.Parent = container
 
     local toggleCorner = Instance.new("UICorner")
     toggleCorner.CornerRadius = UDim.new(1, 0)
     toggleCorner.Parent = toggleBg
-    
-    local toggleGlow = Instance.new("UIStroke")
-    toggleGlow.Color = AccentColor
-    toggleGlow.Thickness = 1
-    toggleGlow.Transparency = defaultState and 0 or 1
-    toggleGlow.Parent = toggleBg
 
-    local toggleCircle = Instance.new("Frame")
-    toggleCircle.Size = UDim2.new(0, 20, 0, 20)
-    toggleCircle.Position = defaultState and UDim2.new(1, -22, 0, 2) or UDim2.new(0, 2, 0, 2)
-    toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    toggleCircle.Parent = toggleBg
-
-    local circleCorner = Instance.new("UICorner")
-    circleCorner.CornerRadius = UDim.new(1, 0)
-    circleCorner.Parent = toggleCircle
+    local toggleStroke = Instance.new("UIStroke")
+    toggleStroke.Color = defaultState and AccentColor or Color3.fromRGB(70, 80, 110)
+    toggleStroke.Thickness = 1
+    toggleStroke.Transparency = 0.4
+    toggleStroke.Parent = toggleBg
 
     local state = defaultState
 
     local function updateVisuals(newState)
         state = newState
-        local targetColor = state and AccentColor or Color3.fromRGB(70, 70, 70)
-        local targetPos = state and UDim2.new(1, -22, 0, 2) or UDim2.new(0, 2, 0, 2)
-        local targetGlow = state and 0 or 1
+        local targetColor = state and AccentColor or Color3.fromRGB(35, 41, 56)
+        local targetTransparency = state and 0.15 or 0.4
+        local targetText = state and "ON" or "OFF"
+        local targetTextColor = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(140, 150, 175)
         
-        TweenService:Create(toggleBg, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = targetColor}):Play()
-        TweenService:Create(toggleCircle, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = targetPos}):Play()
-        TweenService:Create(toggleGlow, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Transparency = targetGlow}):Play()
+        TweenService:Create(toggleBg, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundColor3 = targetColor, BackgroundTransparency = targetTransparency}):Play()
+        toggleBg.Text = targetText
+        toggleBg.TextColor3 = targetTextColor
     end
 
     table.insert(connections, toggleBg.MouseButton1Click:Connect(function()
+        playClickSound()
         local newState = not state
         updateVisuals(newState)
         if callback then callback(newState) end
@@ -398,60 +430,89 @@ end
 
 local function createButton(parent, text, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 36)
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.TextSize = 13
-    btn.Font = Enum.Font.GothamMedium
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 29, 40)
+    btn.BackgroundTransparency = 0.5
+    btn.TextColor3 = Color3.fromRGB(215, 222, 240)
+    btn.TextSize = 12
+    btn.Font = UI_Font
     btn.Text = text
     btn.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = btn
 
-    table.insert(connections, btn.MouseButton1Click:Connect(callback))
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Color = Color3.fromRGB(60, 70, 95)
+    btnStroke.Thickness = 1
+    btnStroke.Transparency = 0.6
+    btnStroke.Parent = btn
+
+    table.insert(connections, btn.MouseButton1Click:Connect(function()
+        playClickSound()
+        callback()
+    end))
     return btn
 end
 
 local function createLabel(parent, text)
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, 0, 0, 22)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(180, 180, 180)
+    label.TextColor3 = Color3.fromRGB(140, 150, 175)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.GothamMedium
-    label.TextSize = 12
+    label.Font = UI_Font
+    label.TextSize = 11
     label.Parent = parent
     return label
 end
 
 local function createSlider(parent, text, defaultVal, minVal, maxVal, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 50)
-    container.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    container.Size = UDim2.new(1, 0, 0, 56)
+    container.BackgroundColor3 = Color3.fromRGB(25, 29, 40)
+    container.BackgroundTransparency = 0.5
     container.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = container
 
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = Color3.fromRGB(60, 70, 95)
+    containerStroke.Thickness = 1
+    containerStroke.Transparency = 0.6
+    containerStroke.Parent = container
+
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -30, 0, 24)
-    label.Position = UDim2.new(0, 15, 0, 2)
+    label.Size = UDim2.new(1, -65, 0, 26)
+    label.Position = UDim2.new(0, 16, 0, 4)
     label.BackgroundTransparency = 1
-    label.Text = text .. ": " .. defaultVal
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(215, 222, 240)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
+    label.Font = UI_Font
     label.TextSize = 12
     label.Parent = container
 
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 50, 0, 26)
+    valLabel.Position = UDim2.new(1, -60, 0, 4)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Text = tostring(defaultVal)
+    valLabel.TextColor3 = AccentColor
+    valLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valLabel.Font = UI_Font
+    valLabel.TextSize = 12
+    valLabel.Parent = container
+
     local bar = Instance.new("TextButton")
-    bar.Size = UDim2.new(1, -30, 0, 8)
-    bar.Position = UDim2.new(0, 15, 0, 32)
-    bar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    bar.Size = UDim2.new(1, -32, 0, 8)
+    bar.Position = UDim2.new(0, 16, 0, 36)
+    bar.BackgroundColor3 = Color3.fromRGB(40, 48, 65)
+    bar.BackgroundTransparency = 0.3
     bar.Text = ""
     bar.AutoButtonColor = false
     bar.Parent = container
@@ -469,72 +530,72 @@ local function createSlider(parent, text, defaultVal, minVal, maxVal, callback)
     local fillCorner = Instance.new("UICorner")
     fillCorner.CornerRadius = UDim.new(1, 0)
     fillCorner.Parent = fill
-    
-    local fillGlow = Instance.new("UIStroke")
-    fillGlow.Color = AccentColor
-    fillGlow.Thickness = 1
-    fillGlow.Transparency = 0.5
-    fillGlow.Parent = fill
 
-    local dragging = false
+    local draggingBar = false
     table.insert(connections, bar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
+            draggingBar = true
         end
     end))
 
     table.insert(connections, UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
+            draggingBar = false
         end
     end))
 
     table.insert(connections, UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if draggingBar and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local mousePos = UserInputService:GetMouseLocation()
             local relativeX = math.clamp(mousePos.X - bar.AbsolutePosition.X, 0, bar.AbsoluteSize.X)
             local percentage = relativeX / bar.AbsoluteSize.X
             
             local val = math.floor(minVal + (percentage * (maxVal - minVal)))
             fill.Size = UDim2.new(percentage, 0, 1, 0)
-            label.Text = text .. ": " .. val
+            valLabel.Text = tostring(val)
             if callback then callback(val) end
         end
     end))
 end
 
--- Visual Slider Color Picker (Click & Drag)
 local function createColorPicker(parent, text, defaultColor, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 80)
-    container.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    container.Size = UDim2.new(1, 0, 0, 75)
+    container.BackgroundColor3 = Color3.fromRGB(25, 29, 40)
+    container.BackgroundTransparency = 0.5
     container.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = container
+
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = Color3.fromRGB(60, 70, 95)
+    containerStroke.Thickness = 1
+    containerStroke.Transparency = 0.6
+    containerStroke.Parent = container
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -15, 0, 24)
-    label.Position = UDim2.new(0, 15, 0, 2)
+    label.Size = UDim2.new(1, -15, 0, 26)
+    label.Position = UDim2.new(0, 16, 0, 6)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextColor3 = Color3.fromRGB(215, 222, 240)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
+    label.Font = UI_Font
     label.TextSize = 12
     label.Parent = container
 
     local wheel = Instance.new("TextButton")
-    wheel.Size = UDim2.new(1, -100, 0, 35)
-    wheel.Position = UDim2.new(0, 15, 0, 32)
+    wheel.Size = UDim2.new(1, -80, 0, 28)
+    wheel.Position = UDim2.new(0, 16, 0, 36)
     wheel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     wheel.Text = ""
     wheel.AutoButtonColor = false
     wheel.Parent = container
 
     local wCorner = Instance.new("UICorner")
-    wCorner.CornerRadius = UDim.new(0, 6)
+    wCorner.CornerRadius = UDim.new(0, 8)
     wCorner.Parent = wheel
 
     local grad = Instance.new("UIGradient")
@@ -550,13 +611,13 @@ local function createColorPicker(parent, text, defaultColor, callback)
     grad.Parent = wheel
 
     local preview = Instance.new("Frame")
-    preview.Size = UDim2.new(0, 55, 0, 35)
-    preview.Position = UDim2.new(1, -70, 0, 32)
+    preview.Size = UDim2.new(0, 44, 0, 28)
+    preview.Position = UDim2.new(1, -60, 0, 36)
     preview.BackgroundColor3 = defaultColor
     preview.Parent = container
 
     local pCorner = Instance.new("UICorner")
-    pCorner.CornerRadius = UDim.new(0, 6)
+    pCorner.CornerRadius = UDim.new(0, 8)
     pCorner.Parent = preview
 
     local picking = false
@@ -584,90 +645,16 @@ local function createColorPicker(parent, text, defaultColor, callback)
     end))
 end
 
--- Typeable RGB Input Picker with explicit "RGB" prefix text inside the input box
-local function createRgbInputPicker(parent, text, defaultColor, callback)
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 75)
-    container.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    container.Parent = parent
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = container
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -70, 0, 24)
-    label.Position = UDim2.new(0, 15, 0, 5)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.Parent = container
-
-    local preview = Instance.new("Frame")
-    preview.Size = UDim2.new(0, 40, 0, 24)
-    preview.Position = UDim2.new(1, -55, 0, 5)
-    preview.BackgroundColor3 = defaultColor
-    preview.Parent = container
-
-    local previewCorner = Instance.new("UICorner")
-    previewCorner.CornerRadius = UDim.new(0, 6)
-    previewCorner.Parent = preview
-
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -30, 0, 32)
-    box.Position = UDim2.new(0, 15, 0, 34)
-    box.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    box.TextColor3 = Color3.fromRGB(255, 255, 255)
-    box.TextSize = 13
-    box.Font = Enum.Font.GothamMedium
-    box.Text = "RGB " .. math.floor(defaultColor.R * 255) .. " " .. math.floor(defaultColor.G * 255) .. " " .. math.floor(defaultColor.B * 255)
-    box.ClearTextOnFocus = false
-    box.Parent = container
-
-    local boxCorner = Instance.new("UICorner")
-    boxCorner.CornerRadius = UDim.new(0, 6)
-    boxCorner.Parent = box
-
-    local boxStroke = Instance.new("UIStroke")
-    boxStroke.Color = AccentColor
-    boxStroke.Thickness = 1
-    boxStroke.Transparency = 0.5
-    boxStroke.Parent = box
-
-    table.insert(connections, box.FocusLost:Connect(function(enterPressed)
-        local r, g, b = box.Text:match("RGB%s*(%d+)%D+(%d+)%D+(%d+)")
-        if not r then
-            r, g, b = box.Text:match("(%d+)%D+(%d+)%D+(%d+)")
-        end
-        
-        if r and g and b then
-            local cr = math.clamp(tonumber(r), 0, 255)
-            local cg = math.clamp(tonumber(g), 0, 255)
-            local cb = math.clamp(tonumber(b), 0, 255)
-            local newColor = Color3.fromRGB(cr, cg, cb)
-            preview.BackgroundColor3 = newColor
-            box.Text = "RGB " .. cr .. " " .. cg .. " " .. cb
-            if callback then callback(newColor) end
-        else
-            local cur = preview.BackgroundColor3
-            box.Text = "RGB " .. math.floor(cur.R * 255) .. " " .. math.floor(cur.G * 255) .. " " .. math.floor(cur.B * 255)
-        end
-    end))
-end
-
 -- Initialize Tabs
-local AimbotPanel = createTab("Combat")
-local EspPanel = createTab("Visuals")
+local AimbotPanel = createTab("Aimbot")
+local EspPanel = createTab("Esp")
 local PlayerPanel = createTab("Player")
 local SettingsPanel = createTab("Settings")
 
--- Variables to store external toggle updaters (for Hotkeys)
+-- Variables for external hotkey toggles
 local setAimbotUI, setTpUI
 
--- Combat Tab
+-- Aimbot Tab
 local TargetDisplay = createLabel(AimbotPanel, "Target: None")
 
 setAimbotUI = createToggle(AimbotPanel, "Enable Aimbot (Key: E)", AimbotEnabled, function(val)
@@ -675,9 +662,9 @@ setAimbotUI = createToggle(AimbotPanel, "Enable Aimbot (Key: E)", AimbotEnabled,
     if not AimbotEnabled then TargetDisplay.Text = "Target: None" end
 end)
 
--- Aimbot Target Part Selector (Head / Torso)
 local aimPartBtn = createButton(AimbotPanel, "Aim Part: Head", function() end)
 table.insert(connections, aimPartBtn.MouseButton1Click:Connect(function()
+    playClickSound()
     if AimbotTargetPart == "Head" then
         AimbotTargetPart = "Torso"
         aimPartBtn.Text = "Aim Part: Torso"
@@ -693,6 +680,7 @@ end)
 
 local triggerBtn = createButton(AimbotPanel, "Trigger Click Mode: Left", function() end)
 table.insert(connections, triggerBtn.MouseButton1Click:Connect(function()
+    playClickSound()
     if TriggerbotMode == "Left" then
         TriggerbotMode = "Right"
         triggerBtn.Text = "Trigger Click Mode: Right"
@@ -706,7 +694,6 @@ setTpUI = createToggle(AimbotPanel, "Teleport Behind Target (Key: G)", TeleportB
     TeleportBehindEnabled = val
 end)
 
--- FOV Controls in Combat Tab
 createToggle(AimbotPanel, "Enable FOV Circle", FovEnabled, function(val)
     FovEnabled = val
     FovCircle.Visible = val
@@ -715,16 +702,12 @@ createSlider(AimbotPanel, "FOV Radius", FovRadius, 50, 400, function(val)
     FovRadius = val
     FovCircle.Radius = val
 end)
-createColorPicker(AimbotPanel, "FOV Circle Color Picker", FovColor, function(c)
-    FovColor = c
-    FovCircle.Color = c
-end)
-createRgbInputPicker(AimbotPanel, "FOV Circle RGB Type (R G B)", FovColor, function(c)
+createColorPicker(AimbotPanel, "FOV Circle Color", FovColor, function(c)
     FovColor = c
     FovCircle.Color = c
 end)
 
--- Visuals Tab
+-- Esp Tab
 createToggle(EspPanel, "Show Boxes", EspBoxesEnabled, function(val) EspBoxesEnabled = val end)
 createToggle(EspPanel, "Rainbow Boxes", RainbowBoxesEnabled, function(val) RainbowBoxesEnabled = val end)
 createToggle(EspPanel, "Show Tracers", EspTracersEnabled, function(val) EspTracersEnabled = val end)
@@ -732,9 +715,7 @@ createToggle(EspPanel, "Show Names", EspNamesEnabled, function(val) EspNamesEnab
 createToggle(EspPanel, "Show Health", EspHealthEnabled, function(val) EspHealthEnabled = val end)
 createToggle(EspPanel, "Show Distance", EspDistanceEnabled, function(val) EspDistanceEnabled = val end)
 createToggle(EspPanel, "Show Hitboxes", EspHitboxesEnabled, function(val) EspHitboxesEnabled = val end)
-
-createColorPicker(EspPanel, "ESP Base Color Picker", BoxColor, function(c) BoxColor = c end)
-createRgbInputPicker(EspPanel, "ESP Base RGB Type (R G B)", BoxColor, function(c) BoxColor = c end)
+createColorPicker(EspPanel, "ESP Base Color", BoxColor, function(c) BoxColor = c end)
 
 -- Player Tab
 createToggle(PlayerPanel, "Enable WalkSpeed", WalkSpeedEnabled, function(val)
@@ -762,8 +743,15 @@ createToggle(PlayerPanel, "Enable Flight", FlyEnabled, function(val)
     end
 end)
 createSlider(PlayerPanel, "Flight Speed", FlySpeed, 10, 300, function(val) FlySpeed = val end)
-
 createToggle(PlayerPanel, "Enable Noclip", NoclipEnabled, function(val) NoclipEnabled = val end)
+
+createToggle(PlayerPanel, "Enable Custom Camera FOV", CustomFovEnabled, function(val)
+    CustomFovEnabled = val
+    if not val then Camera.FieldOfView = 70 end
+end)
+createSlider(PlayerPanel, "Camera FOV", CustomFovValue, 10, 120, function(val)
+    CustomFovValue = val
+end)
 
 -- Settings Tab
 createLabel(SettingsPanel, "Hide/Show Menu Key: Right Shift")
@@ -771,6 +759,8 @@ createButton(SettingsPanel, "Unload Script Completely", function()
     for _, conn in ipairs(connections) do conn:Disconnect() end
     if FovCircle and FovCircle.Remove then FovCircle:Remove() end
     if cachedAnimateScript and cachedAnimateScript.Parent then cachedAnimateScript.Enabled = true end
+    if ClickSound then ClickSound:Destroy() end
+    Camera.FieldOfView = 70
     for player, data in pairs(espDrawings) do
         for _, draw in pairs(data) do
             if type(draw) == "table" then
@@ -781,7 +771,7 @@ createButton(SettingsPanel, "Unload Script Completely", function()
     ScreenGui:Destroy()
 end)
 
--- Main Logic Implementation --
+-- Main Logic Implementation
 local guiVisible = true
 table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == HideGuiKey then
@@ -821,7 +811,6 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Keybinds for Aimbot (E) and Teleport (G)
 table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed then
         if input.KeyCode == ToggleKey then
@@ -855,9 +844,7 @@ local function isMouseOverTarget()
         local player = Players:GetPlayerFromCharacter(character)
         if player and player ~= LocalPlayer then
             local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                return true
-            end
+            if humanoid and humanoid.Health > 0 then return true end
         end
     end
     return false
@@ -878,11 +865,13 @@ local function removeEspForPlayer(player)
     end
 end
 
--- RenderStepped Core Loop
 table.insert(connections, RunService.RenderStepped:Connect(function()
     Camera.CameraType = Enum.CameraType.Custom
 
-    -- Handle Player Modifiers
+    if CustomFovEnabled then
+        Camera.FieldOfView = CustomFovValue
+    end
+
     local char = LocalPlayer.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -912,7 +901,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- FOV Update
     if FovEnabled then
         local mousePos = UserInputService:GetMouseLocation()
         FovCircle.Position = mousePos
@@ -921,7 +909,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
         FovCircle.Visible = false
     end
 
-    -- Aimbot Target Updating (Respects Head or Torso selection)
     if AimbotEnabled then
         local target = getClosestPlayer()
         if target and target.Character then
@@ -943,7 +930,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Triggerbot
     if TriggerbotEnabled and isMouseOverTarget() then
         local mouseLoc = UserInputService:GetMouseLocation()
         local btnInt = (TriggerbotMode == "Left") and 0 or 1
@@ -952,7 +938,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
         VirtualInputManager:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, btnInt, false, game, 0)
     end
 
-    -- ESP Rendering
     local activePlayers = {}
     local viewportSize = Camera.ViewportSize
     local tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y)
@@ -1003,7 +988,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
 
                 local visuals = espDrawings[player]
                 
-                -- Hitboxes ESP
                 if EspHitboxesEnabled then
                     for _, part in ipairs(character:GetDescendants()) do
                         if part:IsA("BasePart") and part.Transparency < 1 then
@@ -1038,7 +1022,6 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
                     for _, hb in pairs(visuals.Hitboxes) do hb.Visible = false end
                 end
 
-                -- Standard ESP
                 local cf, size = character:GetBoundingBox()
                 local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
 
